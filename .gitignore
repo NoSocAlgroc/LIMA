@@ -1,0 +1,15 @@
+# Compiled class files
+target/
+*.class
+
+# Log files
+*.log
+
+# Maven output
+mvnw
+mvnw.cmd
+.mvn/
+
+
+.vscode/
+
