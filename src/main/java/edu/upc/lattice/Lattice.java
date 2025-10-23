@@ -1,4 +1,4 @@
-package edu.upc.data.lattice;
+package edu.upc.lattice;
 
 import java.util.IdentityHashMap;
 import java.util.LinkedList;
