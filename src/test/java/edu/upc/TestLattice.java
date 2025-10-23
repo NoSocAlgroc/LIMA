@@ -5,8 +5,6 @@ import org.junit.Test;
 import com.koloboke.collect.map.hash.HashIntIntMaps;
 
 import edu.upc.data.lattice.Lattice;
-import edu.upc.data.lattice.Lattice.Node;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -19,13 +17,13 @@ public class TestLattice {
 
 
         int[] preds=new int[]{1,3,1,8,2,1,1};
-        Lattice lattice=new Lattice(preds);
+        Lattice<Object,Object> lattice=new Lattice<>(preds);
 
-        Lattice.Node root=lattice.fetchNode(HashIntIntMaps.newMutableMap());
+        Lattice<Object,Object>.Node root=lattice.fetchNode(HashIntIntMaps.newMutableMap());
 
-        lattice.supersets(root,new Predicate<Lattice.Node>(){
+        lattice.supersets(root,new Predicate<Lattice<Object,Object>.Node>(){
             @Override
-            public boolean test(Node t) {
+            public boolean test(Lattice<Object,Object>.Node t) {
 
                 System.out.println(t);
                 for(int cp=0;cp<preds.length;cp++) {
@@ -46,9 +44,9 @@ public class TestLattice {
 
         int count[]=new int[]{0};
 
-        lattice.supersets(root, new Predicate<Lattice.Node>() {
+        lattice.supersets(root, new Predicate<Lattice<Object,Object>.Node>() {
             @Override
-            public boolean test(Node t) {
+            public boolean test(Lattice<Object,Object>.Node t) {
                 count[0]+=1;
                 System.out.println(t);
                 return false;
@@ -61,9 +59,9 @@ public class TestLattice {
 
 
 
-        lattice.supersets(root, new Predicate<Lattice.Node>() {
+        lattice.supersets(root, new Predicate<Lattice<Object,Object>.Node>() {
             @Override
-            public boolean test(Node t) {
+            public boolean test(Lattice<Object,Object>.Node t) {
                 int npreds=t.preds.size();
 
                 assertEquals(t.from.size(), npreds);
@@ -77,8 +75,8 @@ public class TestLattice {
                     }
                     else{
                         assertNull(t.from.get(cp));
-                        Lattice.Edge[] cpPreds=t.to.get(cp);
-                        for(Lattice.Edge e:cpPreds) 
+                        Lattice<Object,Object>.Edge[] cpPreds=t.to.get(cp);
+                        for(Lattice<Object,Object>.Edge e:cpPreds) 
                         {
                             assertNotNull(e);
                         }
@@ -86,7 +84,7 @@ public class TestLattice {
                 }
 
                 
-                System.out.println(t);
+                //System.out.println(t);
                 return false;
             }
         });
@@ -101,15 +99,15 @@ public class TestLattice {
     {
         int[] preds=new int[]{1,1,1};
 
-        Lattice base=new Lattice(preds);
+        Lattice<Integer,Integer> base=new Lattice<>(preds);
 
-        Lattice a=new Lattice(base),b=new Lattice(base);
-        Lattice.Node an=a.fetchRoot(),bn=b.fetchRoot();
+        Lattice<String,Object> a=new Lattice<>(base),b=new Lattice<>(base);
+        Lattice<String,Object>.Node an=a.fetchRoot(),bn=b.fetchRoot();
 
         assertEquals(an.base, bn.base);
 
         int cp=0,p=0;
-        Lattice.Edge ae=a.fetchTo(an, cp, p),be=b.fetchTo(bn, cp, p);
+        Lattice<String,Object>.Edge ae=a.fetchTo(an, cp, p),be=b.fetchTo(bn, cp, p);
 
         assertEquals(ae.base, be.base);
 

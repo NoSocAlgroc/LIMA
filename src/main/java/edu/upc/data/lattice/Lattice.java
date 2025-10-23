@@ -14,17 +14,18 @@ import com.koloboke.collect.map.hash.HashObjObjMap;
 import com.koloboke.collect.map.hash.HashObjObjMaps;
 
 
-public class Lattice {
+public class Lattice<N,E> {
 
 
     public class Node {
 
 
+        public N n;
         public HashIntObjMap<Edge[]> to;
         public HashIntObjMap<Edge> from;
         public HashIntIntMap preds;
 
-        public Node base;
+        public Lattice<?,?>.Node base;
 
 
         public Node(HashIntIntMap preds) {
@@ -38,12 +39,20 @@ public class Lattice {
             return this.preds.toString();
         }
 
+
+        public Edge getTo(int cp, int p){return Lattice.this.getTo(this, cp, p);}
+        public Edge fetchTo(int cp, int p){return Lattice.this.fetchTo(this, cp, p);}
+        public Edge getFrom(int cp, int p){return Lattice.this.getFrom(this, cp, p);}
+        public Edge fetchFrom(int cp, int p){return Lattice.this.fetchFrom(this, cp, p);}
+
     }
 
 
     public class Edge {
 
-        public Edge base;
+        public E e;
+
+        public Lattice<?,?>.Edge base;
 
         public Node from,to;
         public int cp,p;
@@ -69,7 +78,7 @@ public class Lattice {
 
     public Node root;
 
-    public Lattice base;
+    public Lattice<?,?> base;
 
     public Lattice(int[] preds) {
         this.preds=preds;
@@ -78,7 +87,7 @@ public class Lattice {
         this.base=this;
     }
 
-    public Lattice(Lattice base) {
+    public Lattice(Lattice<?,?> base) {
         this.base=base;
         this.preds=base.preds;
         this.nodes=HashObjObjMaps.newUpdatableMap();
@@ -120,7 +129,7 @@ public class Lattice {
         assert !n.preds.containsKey(cp);
         if(ecps==null)
         {
-            ecps=new Edge[Lattice.this.preds[cp]];
+            ecps=(Edge[]) new Lattice<?,?>.Edge[Lattice.this.preds[cp]];
             n.to.put(cp, ecps);
         }
         return ecps;
@@ -135,7 +144,7 @@ public class Lattice {
             Node toNode=this.fetchNode(newPreds);
             e=new Edge(n, cp, p, toNode);
             linkEdge(e);
-            e.base=this.base==this?e:this.base.fetchTo(this.base.fetchNode(e.from.preds),e.cp,e.p);
+            e.base=this.base==this?e:this.base.fetchNode(e.from.preds).fetchTo(e.cp,e.p);
             
         }
         return e;
@@ -149,6 +158,7 @@ public class Lattice {
             Node fromNode=this.fetchNode(newPreds);
             e=new Edge(fromNode, cp, p, n);
             linkEdge(e);
+            e.base=this.base==this?e:this.base.fetchNode(e.from.preds).fetchTo(e.cp,e.p);
         }
         assert e.p==p;
         return e;
