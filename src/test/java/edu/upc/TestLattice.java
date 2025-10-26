@@ -4,7 +4,9 @@ import org.junit.Test;
 
 import com.koloboke.collect.map.hash.HashIntIntMaps;
 
-import edu.upc.data.lattice.Lattice;
+import edu.upc.lattice.Lattice;
+import edu.upc.lattice.PredSet;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -19,7 +21,7 @@ public class TestLattice {
         int[] preds=new int[]{1,3,1,8,2,1,1};
         Lattice<Object,Object> lattice=new Lattice<>(preds);
 
-        Lattice<Object,Object>.Node root=lattice.fetchNode(HashIntIntMaps.newMutableMap());
+        Lattice<Object,Object>.Node root=lattice.fetchNode(new PredSet(lattice.predProd));
 
         lattice.supersets(root,new Predicate<Lattice<Object,Object>.Node>(){
             @Override
@@ -27,7 +29,7 @@ public class TestLattice {
 
                 System.out.println(t);
                 for(int cp=0;cp<preds.length;cp++) {
-                    if(t.preds.containsKey(cp))continue;
+                    if(t.preds.contains(cp))continue;
                     for(int p=0;p<preds[cp];p++) {
                         lattice.fetchTo(t, cp, p);
                     }
@@ -69,7 +71,7 @@ public class TestLattice {
                 
                 for(int cp=0;cp<preds.length;cp++)
                 {
-                    if(t.preds.containsKey(cp)){
+                    if(t.preds.contains(cp)){
                         assertNull(t.to.get(cp));                        
                         assertNotNull(t.from.get(cp));
                     }

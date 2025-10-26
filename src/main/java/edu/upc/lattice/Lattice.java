@@ -6,8 +6,6 @@ import java.util.Queue;
 import java.util.function.Predicate;
 
 import com.koloboke.collect.map.IntObjCursor;
-import com.koloboke.collect.map.hash.HashIntIntMap;
-import com.koloboke.collect.map.hash.HashIntIntMaps;
 import com.koloboke.collect.map.hash.HashIntObjMap;
 import com.koloboke.collect.map.hash.HashIntObjMaps;
 import com.koloboke.collect.map.hash.HashObjObjMap;
@@ -17,19 +15,20 @@ import com.koloboke.collect.map.hash.HashObjObjMaps;
 public class Lattice<N,E> {
 
 
+
     public class Node {
 
 
         public N n;
         public HashIntObjMap<Edge[]> to;
         public HashIntObjMap<Edge> from;
-        public HashIntIntMap preds;
+        public PredSet preds;
 
         public Lattice<?,?>.Node base;
 
 
-        public Node(HashIntIntMap preds) {
-            this.preds=HashIntIntMaps.newImmutableMap(preds);
+        public Node(PredSet preds) {
+            this.preds=preds;
             this.from=HashIntObjMaps.newUpdatableMap();
             this.to=HashIntObjMaps.newUpdatableMap();
         }
@@ -72,41 +71,50 @@ public class Lattice<N,E> {
 
 
 
-    public int[] preds;
+    public int[] preds,predProd;
 
-    public HashObjObjMap<HashIntIntMap,Node> nodes;
+    public HashObjObjMap<PredSet,Node> nodes;
 
     public Node root;
 
     public Lattice<?,?> base;
-
+    
     public Lattice(int[] preds) {
-        this.preds=preds;
-        this.nodes=HashObjObjMaps.newUpdatableMap();
-        this.root=new Node(HashIntIntMaps.newImmutableMap(HashIntIntMaps.newUpdatableMap()));
         this.base=this;
+        this.preds=preds;    
+
+        this.predProd=new int[preds.length];
+        this.predProd[0]=1;
+        for(int p=1;p<preds.length;p++)this.predProd[p]=(this.predProd[p-1]*(this.preds[p-1]+1)) % PredSet.MOD;
+
+        this.nodes=HashObjObjMaps.newUpdatableMap();
+        this.root=new Node(new PredSet(this.predProd));
     }
 
     public Lattice(Lattice<?,?> base) {
         this.base=base;
         this.preds=base.preds;
+
+        this.predProd=base.predProd;
+
         this.nodes=HashObjObjMaps.newUpdatableMap();
-        this.root=new Node(HashIntIntMaps.newImmutableMap(HashIntIntMaps.newUpdatableMap()));
+        this.root=new Node(new PredSet(this.predProd));
+
     }
 
 
     public Node fetchRoot() {
-        return this.fetchNode(HashIntIntMaps.newMutableMap());
+        return this.fetchNode(new PredSet(this.predProd));
     }
 
-    public Node fetchNode(HashIntIntMap preds) {
+    public Node fetchNode(PredSet preds) {
         Node n=this.nodes.get(preds);
         if(n==null) {
             if(preds.size()==0)n=this.root;
             else {
                 n=new Node(preds);                
             }
-            this.nodes.put(preds, n);
+            this.nodes.put(n.preds, n);
             n.base=this.base==this?n:this.base.fetchNode(preds);
         }
         return n;
@@ -126,7 +134,7 @@ public class Lattice<N,E> {
 
     Edge[] fetchToEdges(Node n, int cp) {
         Edge[] ecps=n.to.get(cp);
-        assert !n.preds.containsKey(cp);
+        assert !n.preds.contains(cp);
         if(ecps==null)
         {
             ecps=(Edge[]) new Lattice<?,?>.Edge[Lattice.this.preds[cp]];
@@ -135,26 +143,30 @@ public class Lattice<N,E> {
         return ecps;
     }
     public Edge fetchTo(Node n, int cp, int p) {
+        
         Edge[] ecps=this.fetchToEdges(n, cp);
         Edge e=ecps[p];
+        
         if(e==null) {
-            HashIntIntMap newPreds=HashIntIntMaps.newUpdatableMap(n.preds);
-            assert !newPreds.containsKey(cp);
-            newPreds.addValue(cp, p);
+            
+            PredSet newPreds=new PredSet(n.preds);
+            assert !newPreds.contains(cp);
+            newPreds.add(cp, p);
             Node toNode=this.fetchNode(newPreds);
             e=new Edge(n, cp, p, toNode);
             linkEdge(e);
-            e.base=this.base==this?e:this.base.fetchNode(e.from.preds).fetchTo(e.cp,e.p);
+            e.base=this.base==this?e:n.base.fetchTo(e.cp,e.p);            
             
         }
+        
         return e;
     }
     public Edge fetchFrom(Node n, int cp, int p) {
         Edge e=n.from.get(cp);        
         if(e==null) {
-            HashIntIntMap newPreds=HashIntIntMaps.newUpdatableMap(n.preds);
-            assert newPreds.containsKey(cp);
-            newPreds.remove(cp);
+            PredSet newPreds=new PredSet(n.preds);
+            assert newPreds.contains(cp);
+            newPreds.remove(cp, p);
             Node fromNode=this.fetchNode(newPreds);
             e=new Edge(fromNode, cp, p, n);
             linkEdge(e);
@@ -238,5 +250,34 @@ public class Lattice<N,E> {
         }      
     }
     
-    
+
+    public void fetchSupersets(Node n,Predicate<Node> f) {
+        
+        Queue<Node> q=new LinkedList<>();
+        Object t=Object.class;
+        IdentityHashMap<Node,Object> visited=new IdentityHashMap<>();
+        q.add(n);
+        visited.put(n,t);
+
+        while (!q.isEmpty()) {
+
+            n=q.poll();
+
+            boolean stop=f.test(n);
+            if(stop) continue;
+
+            for(int cp=0;cp<preds.length;cp++) {
+                if(n.preds.contains(cp))continue;
+                for(int p=0;p<preds[cp];p++) {
+                    Edge nextEdge=this.fetchTo(n, cp, p);                    
+                    Node next=nextEdge.to;
+
+                    if(visited.put(next,t)==null)
+                    {
+                        q.add(next);
+                    } 
+                }          
+            }  
+        }      
+    }
 }

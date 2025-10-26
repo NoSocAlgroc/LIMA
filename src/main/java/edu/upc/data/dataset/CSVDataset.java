@@ -21,7 +21,6 @@ public class CSVDataset extends RelationalDataset{
     
     
     BufferedReader reader;
-    public Schema schema;
     CsvReader csvReader;
     int size;
 
@@ -238,8 +237,8 @@ public class CSVDataset extends RelationalDataset{
         ThreadLocalRandom random=ThreadLocalRandom.current();
         TPSet TPSet=new TPSet(n);
         for(int i=0;i<n;i++) {
-            int x =random.nextInt(n);
-            int y=random.nextInt(n-1);
+            int x =random.nextInt(this.size);
+            int y=random.nextInt(this.size-1);
             if(y>=x)y++;
             TPSet.x[i]=x;
             TPSet.y[i]=y;

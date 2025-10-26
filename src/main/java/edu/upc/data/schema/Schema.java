@@ -3,6 +3,8 @@ package edu.upc.data.schema;
 import java.util.ArrayList;
 import java.util.EnumMap;
 
+import edu.upc.lattice.SchemaLattice;
+
 public class Schema {
 
     public String[] colnames;
@@ -14,6 +16,8 @@ public class Schema {
     public EnumMap<Column.Type,ColumnPair[]> typeColumnPairs;
 
     public Predicate[] preds;
+
+    public SchemaLattice lattice;
     
 
 
@@ -22,6 +26,7 @@ public class Schema {
         this.buildColumns(colNames);
         this.buildColumnPairs();
         this.buildPredicates();
+        this.buildLattice();
     }
 
     public void buildColumns(String[] colNames) {
@@ -85,6 +90,12 @@ public class Schema {
         this.preds=predicates.toArray(new Predicate[0]);
     }
 
+
+    public void buildLattice() {
+        int[] preds=new int[this.columnPairs.length];
+        for(int cp=0;cp<this.columnPairs.length;cp++) preds[cp]=this.columnPairs[cp].preds.length;
+        this.lattice=new SchemaLattice(preds);
+    }
     @Override
     public boolean equals(Object obj) {
         Schema other=(Schema) obj;

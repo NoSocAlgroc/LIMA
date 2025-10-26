@@ -84,7 +84,11 @@ public class BetaDistribution {
         this.meanLogOdds = y1(this.a) - y1(this.b + this.a);
         this.sdLogOdds = y2(this.a) - y2(this.b + this.a);
 
-        this.grad = this.mean * y3(this.a) - y3(this.b + this.a);
+        double sum=this.a+this.b;
+        double a=this.a;
+        double b=this.b;
+
+        this.grad = b/(a*sum*sum);
     }
 
     public void add(int a, int b) {
