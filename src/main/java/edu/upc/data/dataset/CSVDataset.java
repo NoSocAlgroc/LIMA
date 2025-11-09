@@ -31,9 +31,7 @@ public class CSVDataset extends RelationalDataset{
         this.csvReader.readHeaders();
         this.schema=new Schema(csvReader.getHeaders());
         this.size=size;
-
-        String[][] data=get(size);
-        this.buildColumns(data);
+        this.buildColumns();
     }
 
     public String[][] get(int n) throws IOException{
@@ -56,47 +54,54 @@ public class CSVDataset extends RelationalDataset{
     ArrayList<String> invStringMap=new ArrayList<>();
 
         
-    void buildColumns(String[][] data)  throws IOException{
+    void buildColumns()  throws IOException{
 
         int n=this.size;
 
-
-        this.intData=new int[schema.typeColumns.get(Column.Type.INTEGER).length][n];
-        this.realData=new float[schema.typeColumns.get(Column.Type.REAL).length][n];
-        this.stringData=new int[schema.typeColumns.get(Column.Type.STRING).length][n];
-
-
-        for(Column col:schema.typeColumns.get(Column.Type.INTEGER))
-        {
-            int typeID=col.typeID;
-            int colID=col.ID;
-             for(int i=0;i<n;i++) intData[typeID][i]=Integer.parseInt(data[i][colID]);
-        }
-        for(Column col:schema.typeColumns.get(Column.Type.REAL))
-        {
-            int typeID=col.typeID;
-            int colID=col.ID;
-            for(int i=0;i<n;i++) {
-                String val=data[i][colID];
-                if(val.length()==0) val="NaN";
-                realData[typeID][i]=Float.parseFloat(val);
-            }
-        }
         int defVal=this.stringMap.defaultValue();
-        for(Column col:schema.typeColumns.get(Column.Type.STRING))
-        {
-            int typeID=col.typeID;
-            int colID=col.ID;
-            for(int i=0;i<n;i++) {
-                String k=data[i][colID];
+
+        Column[] intCols=schema.typeColumns.get(Column.Type.INTEGER);
+        int numIntCols=intCols.length;
+        this.intData=new int[numIntCols][n];
+        int[] intColID=new int[numIntCols];
+        for(int i=0;i<numIntCols;i++) {
+            intColID[i]=intCols[i].ID;
+            assert intCols[i].ID==i;
+        }
+        
+        Column[] realCols=schema.typeColumns.get(Column.Type.REAL);
+        int numRealCols=realCols.length;
+        this.realData=new float[numRealCols][n];
+        int[] realColID=new int[numRealCols];
+        for(int i=0;i<numRealCols;i++) {
+            realColID[i]=realCols[i].ID;
+            assert realCols[i].ID==i;
+        }
+        Column[] strCols=schema.typeColumns.get(Column.Type.STRING);
+        int numStrCols=strCols.length;
+        this.stringData=new int[numStrCols][n];
+        int[] strColID=new int[numStrCols];
+        for(int i=0;i<numStrCols;i++) {
+            strColID[i]=strCols[i].ID;
+            assert strCols[i].ID==i;
+        }
+
+        for(int row=0;row<n;row++){
+            csvReader.readRecord();
+            String[] fields=this.csvReader.getValues();
+
+            for(int i=0;i<numIntCols;i++)intData[i][row]=Integer.parseInt(fields[intColID[i]]);
+            for(int i=0;i<numRealCols;i++)realData[i][row]=Float.parseFloat(fields[realColID[i]]);
+            for(int i=0;i<numStrCols;i++){
+                String k=fields[strColID[i]];
                 int v=this.stringMap.size()+1;
                 int prev=this.stringMap.putIfAbsent(k, v);
                 if(prev!=defVal){
                     v=prev;
-                }                    
-
-                stringData[typeID][i]=v;
+                } 
+                stringData[i][row]=v;
             }
+
         }
             
     }
