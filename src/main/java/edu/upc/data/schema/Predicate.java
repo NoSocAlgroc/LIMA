@@ -8,11 +8,14 @@ public class Predicate {
     public Operator op;
     public ColumnPair cols;
     public int ID;
+    public int cID,pID;
 
-    public Predicate(ColumnPair cols,Operator op,int ID ) {
+    public Predicate(ColumnPair cols,Operator op,int ID ,int cID,int pID) {
         this.cols=cols;
         this.op=op;
         this.ID=ID;
+        this.cID=cID;
+        this.pID=pID;
     }
     
     @Override

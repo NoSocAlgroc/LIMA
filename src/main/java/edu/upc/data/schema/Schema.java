@@ -60,7 +60,8 @@ public class Schema {
         EnumMap<Column.Type,ArrayList<ColumnPair>> typeColumnPairs=new EnumMap<>(Column.Type.class);
         for(Column.Type t:Column.Type.values()) typeColumnPairs.put(t,new ArrayList<>());
         for(Column col:this.columns) {
-            ColumnPair colPair=new ColumnPair(col, col);
+            int cID=columnPairs.size();
+            ColumnPair colPair=new ColumnPair(col, col,cID);
             columnPairs.add(colPair);
             typeColumnPairs.get(colPair.type).add(colPair);          
         }
@@ -83,7 +84,7 @@ public class Schema {
         for(ColumnPair colPair:this.columnPairs) {
             colPair.preds=new Predicate[colPair.type==Column.Type.STRING?2:6];
             for(int i=0;i<colPair.preds.length;i++) {
-                colPair.preds[i]=new Predicate(colPair, ops[i],numPreds++);
+                colPair.preds[i]=new Predicate(colPair, ops[i],numPreds++,colPair.cID,i);
                 predicates.add(colPair.preds[i]);
             }
         }

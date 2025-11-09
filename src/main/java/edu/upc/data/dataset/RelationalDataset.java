@@ -7,6 +7,7 @@ import edu.upc.data.schema.Schema;
 public abstract class RelationalDataset {
     
     public Schema schema;
+    public boolean[] constColumn;
 
     public abstract TPSubSet filter(TPSubSet TPs, Predicate pred);
 

@@ -50,6 +50,7 @@ public class CSVDataset extends RelationalDataset{
     public int[][] intData;
     public float[][] realData;
     public int[][] stringData;
+    
     HashObjIntMap<String> stringMap=HashObjIntMaps.newUpdatableMap();
     ArrayList<String> invStringMap=new ArrayList<>();
 
@@ -59,6 +60,9 @@ public class CSVDataset extends RelationalDataset{
         int n=this.size;
 
         int defVal=this.stringMap.defaultValue();
+
+        this.constColumn=new boolean[this.schema.columns.length];
+        for(int i=0;i<constColumn.length;i++)constColumn[i]=true;
 
         Column[] intCols=schema.typeColumns.get(Column.Type.INTEGER);
         int numIntCols=intCols.length;
@@ -90,16 +94,32 @@ public class CSVDataset extends RelationalDataset{
             csvReader.readRecord();
             String[] fields=this.csvReader.getValues();
 
-            for(int i=0;i<numIntCols;i++)intData[i][row]=Integer.parseInt(fields[intColID[i]]);
-            for(int i=0;i<numRealCols;i++)realData[i][row]=Float.parseFloat(fields[realColID[i]]);
+            for(int i=0;i<numIntCols;i++){
+                int colID=intColID[i];
+                intData[i][row]=Integer.parseInt(fields[colID]);
+                if(constColumn[colID]) {
+                    if(intData[i][row]!=intData[i][0])constColumn[colID]=false;
+                }
+            }
+            for(int i=0;i<numRealCols;i++){
+                int colID=realColID[i];
+                realData[i][row]=Float.parseFloat(fields[colID]);
+                if(constColumn[colID]) {
+                    if(realData[i][row]!=realData[i][0])constColumn[colID]=false;
+                }
+            }
             for(int i=0;i<numStrCols;i++){
-                String k=fields[strColID[i]];
+                int colID=strColID[i];
+                String k=fields[colID];
                 int v=this.stringMap.size()+1;
                 int prev=this.stringMap.putIfAbsent(k, v);
                 if(prev!=defVal){
                     v=prev;
                 } 
                 stringData[i][row]=v;
+                if(constColumn[colID]) {
+                    if(stringData[i][row]!=stringData[i][0])constColumn[colID]=false;
+                }
             }
 
         }
