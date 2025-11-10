@@ -103,7 +103,8 @@ public class CSVDataset extends RelationalDataset{
             }
             for(int i=0;i<numRealCols;i++){
                 int colID=realColID[i];
-                realData[i][row]=Float.parseFloat(fields[colID]);
+                String field=fields[colID];
+                realData[i][row]= field.length()>0?Float.parseFloat(field):Float.NaN;
                 if(constColumn[colID]) {
                     if(realData[i][row]!=realData[i][0])constColumn[colID]=false;
                 }

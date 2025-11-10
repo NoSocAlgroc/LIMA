@@ -185,13 +185,15 @@ public class Scheduler {
             Predicate newPred=preds[newPredIDx];
             if(node.preds.contains(newPred.cID))continue;
 
-            SchedulerLattice.Edge toE=node.fetchTo(newPred.cID, newPred.pID);
-            SchedulerLattice.Node toN=toE.to;
 
-            if(exploreNode(toE))
+
+            if(exploreNode(node,newPred.cID,newPred.pID))
             {
+                SchedulerLattice.Edge toE=node.fetchTo(newPred.cID, newPred.pID);
+                SchedulerLattice.Node toN=toE.to;
                 this.propagateAcross(toE,res);
                 search(toN, newPredSortedID, predIDXs, preds,res);
+                this.getNode(toN).TPs=null;
             }
 
 
@@ -224,8 +226,11 @@ public class Scheduler {
 
         se.sound=true;
 
-        for(IntObjCursor<SchedulerLattice.Edge> cur=e.from.from.cursor();cur.moveNext();) {
-            SchedulerLattice.Node fNode=cur.value().from;
+        for(IntIntCursor cur=e.from.preds.cursor();cur.moveNext();) {
+            int curCP=cur.key();
+            int curP=cur.value();
+            SchedulerLattice.Edge fEdge= e.from.fetchFrom(curCP, curP);
+            SchedulerLattice.Node fNode=fEdge.from;
             SchedulerLattice.Edge tEdge=fNode.fetchTo(e.cp, e.p);
             SchedulerLattice.Node tNode=tEdge.to;
 
@@ -238,7 +243,7 @@ public class Scheduler {
             double lowerMinLogProb=lower.meanLogOdds-devs*lower.sdLogOdds;
             double upperMaxLogProb=upper.meanLogOdds+devs*upper.sdLogOdds;
 
-            if(upperMaxLogProb+0.2>lowerMinLogProb) 
+            if(upperMaxLogProb+0.1>lowerMinLogProb) 
             {
                 se.sound=false;
                 break;
@@ -258,14 +263,17 @@ public class Scheduler {
         System.out.println("Propagate: "+e.from.toString()+" + ("+e.cp+"="+e.p+"): "+(fn.dist.a-1)+"->"+a+" Sound?:"+se.sound);
 
     }
-    boolean exploreNode(SchedulerLattice.Edge e) {
-        if(e.to.preds.size()>6) return false;
-        if(this.getNode(e.from).dist.a==1) return false;
+    boolean exploreNode(SchedulerLattice.Node n, int cp, int p) {
+        //if(n.preds.size()>=10) return false;
+        if(this.getNode(n).dist.a==1) return false;
 
 
-        for(IntObjCursor<SchedulerLattice.Edge> cur=e.from.from.cursor();cur.moveNext();) {
-            SchedulerLattice.Node fNode=cur.value().from;
-            SchedulerLattice.Edge tEdge=fNode.fetchTo(e.cp, e.p);
+        for(IntIntCursor cur=n.preds.cursor();cur.moveNext();) {
+            int curCP=cur.key();
+            int curP=cur.value();
+            SchedulerLattice.Edge fEdge= n.fetchFrom(curCP, curP);
+            SchedulerLattice.Node fNode=fEdge.from;
+            SchedulerLattice.Edge tEdge=fNode.fetchTo(cp, p);
             SchedulerLattice.Node tNode=tEdge.to;
 
             SchedulerEdge tSEdge=this.getEdge(tEdge);
