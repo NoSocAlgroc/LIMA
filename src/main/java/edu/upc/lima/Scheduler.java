@@ -39,7 +39,7 @@ public class Scheduler {
 
     }
 
-    public double minGrad=1e-8;
+    public double minGrad=1e-10;
     public RelationalDataset dataset;
     public SchedulerLattice schedulerLattice;
     public Scheduler(RelationalDataset dataset) {
@@ -239,7 +239,7 @@ public class Scheduler {
             BetaDistribution lower=tSEdge.dist;
             BetaDistribution upper=se.dist;
 
-            double devs=4;
+            double devs=1;
             double lowerMinLogProb=lower.meanLogOdds-devs*lower.sdLogOdds;
             double upperMaxLogProb=upper.meanLogOdds+devs*upper.sdLogOdds;
 
