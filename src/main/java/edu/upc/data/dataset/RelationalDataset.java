@@ -8,6 +8,7 @@ public abstract class RelationalDataset {
     
     public Schema schema;
     public boolean[] constColumn;
+    public int size;
 
     public abstract TPSubSet filter(TPSubSet TPs, Predicate pred);
 

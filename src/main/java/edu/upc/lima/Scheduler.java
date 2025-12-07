@@ -39,7 +39,7 @@ public class Scheduler {
 
     }
 
-    public double minGrad=1e-10;
+    public static double minGrad=1e-6;
     public RelationalDataset dataset;
     public SchedulerLattice schedulerLattice;
     public Scheduler(RelationalDataset dataset) {
@@ -65,7 +65,10 @@ public class Scheduler {
     }
 
     int getBatchSize(int batch) {
-        return 100*(1<<batch);
+        int maxBatch=20;
+        if(batch>maxBatch)batch=maxBatch;
+        int batchSize= 100*(1<<batch);
+        return batchSize;
     }
 
 
@@ -101,7 +104,14 @@ public class Scheduler {
             
         }
 
-        int batches=20;
+        double nn=this.dataset.size;
+        nn=nn*nn*0.0325;
+        int totalN=0;
+        int batches= 0;
+        while (totalN<nn) {
+            totalN+=getBatchSize(batches);
+            batches+=1;
+        }
         for(int batch=0;batch<batches;batch++) {
             ArrayList<Integer> nextPredIDs=new ArrayList<>(predIDs.size());
 
@@ -151,6 +161,7 @@ public class Scheduler {
             SchedulerLattice.Node node=this.schedulerLattice.fetchRoot().getTo(newPred.cID, newPred.pID).to;
 
             this.search(node, newPredSortedID, sortedPreds, preds,res);
+            System.gc();
         }
 
 
@@ -194,6 +205,7 @@ public class Scheduler {
                 this.propagateAcross(toE,res);
                 search(toN, newPredSortedID, predIDXs, preds,res);
                 this.getNode(toN).TPs=null;
+                
             }
 
 

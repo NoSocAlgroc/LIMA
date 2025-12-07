@@ -22,7 +22,6 @@ public class CSVDataset extends RelationalDataset{
     
     BufferedReader reader;
     CsvReader csvReader;
-    int size;
 
 
     public CSVDataset(String path,int size) throws IOException {

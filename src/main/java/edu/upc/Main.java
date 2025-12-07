@@ -8,6 +8,7 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 
+import org.roaringbitmap.IntIteratorFlyweight;
 import org.roaringbitmap.RoaringBitmap;
 
 import com.koloboke.collect.map.hash.HashIntIntMap;
@@ -20,53 +21,29 @@ import edu.upc.lattice.SchemaLattice;
 import edu.upc.lima.Scheduler;
 import edu.upc.utils.BetaDistribution;
 
+import com.univocity.parsers.csv.CsvParser;;
+
 public class Main {
     public static void main(String[] args) throws Exception{
 
-
+        //args=new String[]{"flights_large.csv","0.00000001","5000"};
+        String data=args[0];
+        float aprox=Float.parseFloat(args[1]);
+        int nrow=Integer.parseInt(args[2]);
         System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream("output.txt"))));
 
+        Scheduler.minGrad=aprox*0.01;
+        CSVDataset dataset=new CSVDataset(data, nrow);
 
-        CSVDataset dataset=new CSVDataset("flights.csv", 1000);
 
+        System.err.println("Read");
         Scheduler scheduler=new Scheduler(dataset);
-
-        Scheduler.SchedulerLattice lattice=scheduler.schedulerLattice;
         
-
-        Scheduler.SchedulerLattice.Node node=lattice.fetchRoot();
-
-        ArrayList<Scheduler.SchedulerLattice.Node> nodes=new ArrayList<>();
-        lattice.fetchSupersets(node, n -> { 
-            nodes.add(n);
-            //System.out.println(n);
-            if(n.preds.size()<2){
-                //System.out.println(n);
-                lattice.fetchNode(n.preds);
-                return false;
-            }
-            else return true;
-        } );       
-
-        ArrayList<Scheduler.SchedulerLattice.Node> currentNodes=nodes;
-        double minGrad=1e-6;
-        for(int batch=0;batch<15;batch++) {
-            System.out.println("Nodes: "+Integer.toString(currentNodes.size()));
-            ArrayList<Scheduler.SchedulerLattice.Node> newNodes=new ArrayList<>(currentNodes.size());
-            for(Scheduler.SchedulerLattice.Node n:currentNodes) {
-                double grad=scheduler.sample(n, batch);
-                if(grad>=minGrad) {
-                    newNodes.add(n);
-                    //System.out.println(grad);
-                }
-            }
-
-            currentNodes=newNodes;
-        }
+        scheduler.populatePredicates();
 
 
 
-        System.out.println("Done");
+        System.err.println("Done");
 
         System.out.flush();
         
