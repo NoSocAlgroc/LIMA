@@ -106,7 +106,7 @@ public class Scheduler {
 
         double nn=this.dataset.size;
         nn=nn*nn*0.0325;
-        int totalN=0;
+        long totalN=0;
         int batches= 0;
         while (totalN<nn) {
             totalN+=getBatchSize(batches);
