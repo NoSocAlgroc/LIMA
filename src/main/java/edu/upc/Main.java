@@ -26,7 +26,7 @@ import com.univocity.parsers.csv.CsvParser;;
 public class Main {
     public static void main(String[] args) throws Exception{
 
-        //args=new String[]{"flights_large.csv","0.00000001","5000"};
+        //args=new String[]{"flights.csv","0.00000001","1000000"};
         String data=args[0];
         float aprox=Float.parseFloat(args[1]);
         int nrow=Integer.parseInt(args[2]);
@@ -36,14 +36,14 @@ public class Main {
         CSVDataset dataset=new CSVDataset(data, nrow);
 
 
-        System.err.println("Read");
+        //System.err.println("Read");
         Scheduler scheduler=new Scheduler(dataset);
         
         scheduler.populatePredicates();
 
 
 
-        System.err.println("Done");
+        //System.err.println("Done");
 
         System.out.flush();
         

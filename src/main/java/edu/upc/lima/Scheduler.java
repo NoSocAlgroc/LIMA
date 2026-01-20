@@ -130,7 +130,7 @@ public class Scheduler {
                 predNode.dist.add(a, b);
                 predEdge.dist.add(a, b);
 
-                System.out.println("Fetch: ("+pred.cID+", "+pred.pID+"): "+batchSize+" -> "+a+"      "+predNode.dist.grad);
+                //System.out.println("Fetch: ("+pred.cID+", "+pred.pID+"): "+batchSize+" -> "+a+"      "+predNode.dist.grad);
 
                 if(predNode.dist.grad>minGrad) {
                     nextPredIDs.add(predID);
@@ -153,7 +153,7 @@ public class Scheduler {
         });
 
 
-        ArrayList<PredSet> res=new ArrayList<>();
+        ArrayList<ResultEntry> res=new ArrayList<>();
 
         for(int newPredSortedID=0;newPredSortedID<preds.length;newPredSortedID++) {
             int newPredIDx=sortedPreds[newPredSortedID];
@@ -166,30 +166,63 @@ public class Scheduler {
 
 
         for(int i=0;i<preds.length;i++) {
-            System.out.println(i+" "+preds[i].cID+"="+preds[i].pID+"  "+preds[i].toString());
+           // System.out.println(i+" "+preds[i].cID+"="+preds[i].pID+"  "+preds[i].toString());
         }
 
 
-        for(PredSet ps:res) {
 
-            String s="!(";
+        if(ar) {
+            for(ResultEntry ps:res) {
 
-            for(IntIntCursor cur=ps.cursor();cur.moveNext();) {
-                int cp=cur.key();
-                int p=cur.value();
-                s+=this.dataset.schema.columnPairs[cp].preds[p].toString()+" & ";
+                String s="(";
+
+                for(IntIntCursor cur=ps.e.from.preds.cursor();cur.moveNext();) {
+                    int cp=cur.key();
+                    int p=cur.value();
+                    s+=this.dataset.schema.columnPairs[cp].preds[p].toString()+" & ";
+                }
+                s+=")->";
+                s+=this.dataset.schema.columnPairs[ps.e.cp].preds[ps.e.p].toString();
+                s+=" "+ps.s;
+                System.out.println(s);
+
             }
-            s+=")";
-            System.out.println(s);
+        }
+        else{
+            for(ResultEntry ps:res) {
 
+                String s="!(";
+
+                for(IntIntCursor cur=ps.e.to.preds.cursor();cur.moveNext();) {
+                    int cp=cur.key();
+                    int p=cur.value();
+                    s+=this.dataset.schema.columnPairs[cp].preds[p].toString()+" & ";
+                }
+                s+=")";
+                System.out.println(s);
+
+            }
         }
 
-        System.out.println("Done");
+        //System.out.println("Done");
 
     }
 
 
-    void search(SchedulerLattice.Node node,int lastPredIdx, Integer[] predIDXs,Predicate[] preds,ArrayList<PredSet> res) {
+    static boolean ar=true;
+
+    public static class ResultEntry {
+        SchedulerLattice.Edge e;
+        double s;
+
+        public ResultEntry(SchedulerLattice.Edge e, double s) {
+            this.e=e;
+            this.s=s;
+        }
+
+    }
+
+    void search(SchedulerLattice.Node node,int lastPredIdx, Integer[] predIDXs,Predicate[] preds,ArrayList<ResultEntry> res) {
 
         for(int newPredSortedID=0;newPredSortedID<lastPredIdx;newPredSortedID++) {
             int newPredIDx=predIDXs[newPredSortedID];
@@ -215,7 +248,7 @@ public class Scheduler {
     }
 
 
-    void propagateAcross(SchedulerLattice.Edge e,ArrayList<PredSet> res) {
+    void propagateAcross(SchedulerLattice.Edge e,ArrayList<ResultEntry> res) {
 
         SchedulerNode fn=this.getNode(e.from);
         SchedulerNode tn=this.getNode(e.to);
@@ -238,6 +271,8 @@ public class Scheduler {
 
         se.sound=true;
 
+        double minlogProbDist=1e10;
+
         for(IntIntCursor cur=e.from.preds.cursor();cur.moveNext();) {
             int curCP=cur.key();
             int curP=cur.value();
@@ -255,24 +290,29 @@ public class Scheduler {
             double lowerMinLogProb=lower.meanLogOdds-devs*lower.sdLogOdds;
             double upperMaxLogProb=upper.meanLogOdds+devs*upper.sdLogOdds;
 
-            if(upperMaxLogProb+0.1>lowerMinLogProb) 
+            double logProbDist=lowerMinLogProb-upperMaxLogProb;
+
+            if(logProbDist<minlogProbDist) minlogProbDist=logProbDist;
+
+            if(0.1>logProbDist) 
             {
                 se.sound=false;
                 break;
             }
             else {
-                se.sound=true;
+                //se.sound=true;
             }
 
         }
 
         if(se.sound && se.dist.a==1) {
-            res.add(e.to.preds);
+            ResultEntry resultEntry=new ResultEntry(e,minlogProbDist);
+            res.add(resultEntry);
         }
 
 
 
-        System.out.println("Propagate: "+e.from.toString()+" + ("+e.cp+"="+e.p+"): "+(fn.dist.a-1)+"->"+a+" Sound?:"+se.sound);
+        //System.out.println("Propagate: "+e.from.toString()+" + ("+e.cp+"="+e.p+"): "+(fn.dist.a-1)+"->"+a+" Sound?:"+se.sound);
 
     }
     boolean exploreNode(SchedulerLattice.Node n, int cp, int p) {
