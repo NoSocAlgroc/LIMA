@@ -105,7 +105,7 @@ public class Scheduler {
         }
 
         double nn=this.dataset.size;
-        nn=nn*nn*0.0325;
+        nn=!ar?nn*nn*0.0325:nn*nn*0.0325;
         long totalN=0;
         int batches= 0;
         while (totalN<nn) {
@@ -147,6 +147,7 @@ public class Scheduler {
         Arrays.sort(sortedPreds,new Comparator<Integer>() {
             @Override
             public int compare(Integer a, Integer b) {
+                if(ar && (a<2|b<2)) return 0;
                 return -Double.compare(predNodes[a].dist.meanLogOdds,predNodes[b].dist.meanLogOdds);
             }
             
@@ -172,20 +173,24 @@ public class Scheduler {
 
 
         if(ar) {
+
+            int numcols=this.dataset.schema.columns.length;
+            double[][] pairs=new double[numcols][numcols];
             for(ResultEntry ps:res) {
-
-                String s="(";
-
                 for(IntIntCursor cur=ps.e.from.preds.cursor();cur.moveNext();) {
-                    int cp=cur.key();
-                    int p=cur.value();
-                    s+=this.dataset.schema.columnPairs[cp].preds[p].toString()+" & ";
-                }
-                s+=")->";
-                s+=this.dataset.schema.columnPairs[ps.e.cp].preds[ps.e.p].toString();
-                s+=" "+ps.s;
-                System.out.println(s);
 
+                    int f=cur.key();
+                    int t=ps.e.cp;
+                    if(t!=0) System.err.println("bad");
+                    double s=ps.s;
+                    if(s>pairs[f][t])pairs[f][t]=s;
+                }
+
+            }
+            for(int f=0;f<numcols;f++) {
+                for(int t=0;t<1;t++) {
+                    System.out.println(""+f+" "+t+" "+pairs[f][t]);
+                }
             }
         }
         else{
@@ -209,7 +214,7 @@ public class Scheduler {
     }
 
 
-    static boolean ar=true;
+    static boolean ar=false;
 
     public static class ResultEntry {
         SchedulerLattice.Edge e;
@@ -268,6 +273,7 @@ public class Scheduler {
         }
         tn.dist.add(a, b);
         se.dist.add(tn.dist.a-1, fn.dist.a-tn.dist.a);
+        
 
         se.sound=true;
 
@@ -290,11 +296,21 @@ public class Scheduler {
             double lowerMinLogProb=lower.meanLogOdds-devs*lower.sdLogOdds;
             double upperMaxLogProb=upper.meanLogOdds+devs*upper.sdLogOdds;
 
+            double combinedSdLogOdds=Math.sqrt(lower.sdLogOdds*lower.sdLogOdds+upper.sdLogOdds*upper.sdLogOdds);
+            double probDist=lower.meanLogOdds-upper.meanLogOdds;
+            double normDist= probDist/combinedSdLogOdds;
+
             double logProbDist=lowerMinLogProb-upperMaxLogProb;
 
-            if(logProbDist<minlogProbDist) minlogProbDist=logProbDist;
+            double biasCorrection=0.8;
+            if(upper.mean>biasCorrection) normDist=normDist*Math.exp(-(1-biasCorrection)/(1-upper.mean));
 
-            if(0.1>logProbDist) 
+            if(normDist<minlogProbDist) minlogProbDist=normDist;
+
+
+            //if(0.1>logProbDist) 
+            double tmp=17.674762685878306;
+            if(normDist<2)
             {
                 se.sound=false;
                 break;
@@ -305,7 +321,7 @@ public class Scheduler {
 
         }
 
-        if(se.sound && se.dist.a==1) {
+        if( (se.sound && se.dist.a==1)  || ar) {
             ResultEntry resultEntry=new ResultEntry(e,minlogProbDist);
             res.add(resultEntry);
         }
@@ -318,6 +334,7 @@ public class Scheduler {
     boolean exploreNode(SchedulerLattice.Node n, int cp, int p) {
         //if(n.preds.size()>=10) return false;
         if(this.getNode(n).dist.a==1) return false;
+        if(ar && cp!=0) return false;
 
 
         for(IntIntCursor cur=n.preds.cursor();cur.moveNext();) {

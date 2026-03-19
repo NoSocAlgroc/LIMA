@@ -45,6 +45,10 @@ public class PredSet {
         return this.preds.containsKey(cp);
     }
 
+    public int get(int cp) {
+        return this.contains(cp)? this.preds.get(cp) : -1;
+    }
+
     public IntIntCursor cursor() {
         return this.preds.cursor();
     }

@@ -11,14 +11,15 @@ public class Column {
     public Column(String name) 
     {
         this.name=name;
-        if (this.name.contains("String")) {
-            this.type=Type.STRING;
-        }                
-        else if (this.name.contains("Double")) {
+           
+        if (this.name.contains("Double")) {
             this.type=Type.REAL;
         }
         else if (this.name.contains("Integer")) {
             this.type=Type.INTEGER;
+        }
+        else {
+            this.type=Type.STRING;
         }
     }
 

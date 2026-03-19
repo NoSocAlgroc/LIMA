@@ -26,14 +26,17 @@ import com.univocity.parsers.csv.CsvParser;;
 public class Main {
     public static void main(String[] args) throws Exception{
 
-        //args=new String[]{"flights.csv","0.00000001","1000000"};
+        //args=new String[]{"covertype.csv","0.00001","423680","42"};
         String data=args[0];
         float aprox=Float.parseFloat(args[1]);
         int nrow=Integer.parseInt(args[2]);
+        long seed=42;
+        if(args.length>3) seed=Long.parseLong(args[3]);
+
         System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream("output.txt"))));
 
         Scheduler.minGrad=aprox*0.01;
-        CSVDataset dataset=new CSVDataset(data, nrow);
+        CSVDataset dataset=new CSVDataset(data, nrow,seed);
 
 
         //System.err.println("Read");

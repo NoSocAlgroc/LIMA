@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.SplittableRandom;
 import java.util.concurrent.ThreadLocalRandom;
 
 import com.csvreader.CsvReader;
@@ -23,14 +24,17 @@ public class CSVDataset extends RelationalDataset{
     BufferedReader reader;
     CsvReader csvReader;
 
+    SplittableRandom random;
 
-    public CSVDataset(String path,int size) throws IOException {
+
+    public CSVDataset(String path,int size,long seed) throws IOException {
         this.reader= new BufferedReader(new FileReader(path));
         this.csvReader=new CsvReader(this.reader, ',');
         this.csvReader.readHeaders();
         this.schema=new Schema(csvReader.getHeaders());
         this.size=size;
         this.buildColumns();
+        this.random=new SplittableRandom(seed);
     }
 
     public String[][] get(int n) throws IOException{
@@ -259,7 +263,9 @@ public class CSVDataset extends RelationalDataset{
     @Override
     public TPSubSet sample(int n) {
 
-        ThreadLocalRandom random=ThreadLocalRandom.current();
+        //ThreadLocalRandom random=ThreadLocalRandom.current();
+        
+
         TPSet TPSet=new TPSet(n);
         for(int i=0;i<n;i++) {
             int x =random.nextInt(this.size);
