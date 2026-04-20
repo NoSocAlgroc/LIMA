@@ -19,6 +19,18 @@ The algorithm may be compiled by running the following command from the root dir
 
 After the process finishes, the executable is found in the ```target``` directory of the algorithm. This executable includes all dependencies and is ready to use.
 
+#### Usage
+
+The algorithm may be executed from console with the following command:
+
+```java -jar LIMA.jar DATASET APPROX ROWS SEED```
+
+Where each parameter is:
+
+* DATASET: path to the dataset.
+* APPROX: approximation factor in [0,1).
+* ROWS: Number of rows of the dataset to be used.
+* SEED: A seed may be used to make all random sampling deterministic, to ease reproducibility.
 
 ## Reproducibility
 
