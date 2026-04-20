@@ -1,6 +1,32 @@
-# Discovering Approximate Denial Constraints in Large Databases 
-
-Denial Constraints (DCs) form a highly expressive integrity rule language that subsumes many used formalisms such as keys and functional dependencies, making them widely adopted in applications that require the manipulation of rich sets of data constraints. This expressiveness has motivated the development of numerous algorithms for automatically discovering DCs from data, with particular emphasis on the discovery of approximate DCs to improve robustness to erroneous data. However, existing DC discovery algorithms exhibit computational costs that are quadratic in the number of tuples and exponential in the number of attributes, and most cannot accommodate changes in the data. Moreover, they often produce thousands of uninformative DCs. These limitations make current DC discovery algorithms difficult to use effectively on very large and dynamic databases.
-In this paper, we present LIMA, an approximate DC discovery algorithm that efficiently discovers DCs on very large and dynamic databases. LIMA uses statistical methods to infer properties of DCs from reduced samples, and introduces a novel discovery framework that exploits a more restrictive definition of DC validity to substantially reduce the cost of searching for valid DCs. We experimentally demonstrate that LIMA achieves significantly better scalability than current algorithms with respect to both rows and attributes, while also discovering higher-quality sets of DCs with precisions several orders of magnitude higher than the state of the art, both in static and in dynamic datasets.
+This is the repository for the 2026 VLDB paper: "Discovering Approximate Denial Constraints in Large Databases".
 
 
+## Algorithm compilation
+
+The compilation of LIMA follows the same structure as most other DC discovery algorithms:
+
+### Dependencies
+* Java JDK 1.8 or later
+* Maven 3.1.0 or later
+* Git
+* Having installed Metanome, following the instructions at https://github.com/HPI-Information-Systems/Metanome/tree/master.
+
+### Compilation
+
+The algorithm may be compiled by running the following command from the root directory:
+
+```mvn clean package```
+
+After the process finishes, the executable is found in the ```target``` directory of the algorithm. This executable includes all dependencies and is ready to use.
+
+
+## Reproducibility
+
+All experiments are derived from straightforward executions of all algorithms. For convenience, we provide datasets, compiled JARs, and python code to execute the DC discovery algorithms and obtain and compare their results in our DC [repository](https://github.com/NoSocAlgroc/DCValidity).
+
+
+Figure 5 is the only experimental result outside this common framework. In this case, any traditional DC discovery algorithm can be slighly modified to print the size of the evidence set. Since our algorithm does not compute the full Evidence Set (as a consequence of the results shown in Figure 5), we provide instructions on how to modify the [ECP DC discovery algorithm](https://github.com/EduardoPena/fdcd/tree/main) to obtain the size of the evidene set.
+
+Simply add the following in line 69 on FDCDMocker.java [https://github.com/EduardoPena/fdcd/tree/main](https://github.com/EduardoPena/fdcd/blob/main/src/main/java/br/edu/utfpr/pena/fdcd/mockers/FDCDMocker.java)
+
+```log.info(evidenceSet.size());```
