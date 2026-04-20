@@ -25,7 +25,7 @@ After the process finishes, the executable is found in the ```target``` director
 All experiments are derived from straightforward executions of all algorithms. For convenience, we provide datasets, compiled JARs, and python code to execute the DC discovery algorithms and obtain and compare their results in our DC [repository](https://github.com/NoSocAlgroc/DCValidity).
 
 
-Figure 5 is the only experimental result outside this common framework. In this case, any traditional DC discovery algorithm can be slighly modified to print the size of the evidence set. Since our algorithm does not compute the full Evidence Set (as a consequence of the results shown in Figure 5), we provide instructions on how to modify the [ECP DC discovery algorithm](https://github.com/EduardoPena/fdcd/tree/main) to obtain the size of the evidene set.
+Figure 5 is the only experimental result outside this common framework. In this case, any traditional DC discovery algorithm can be slighly modified to print the size of the evidence set. Since our algorithm does not compute the full Evidence Set (as a consequence of the results shown in Figure 5), we provide instructions on how to modify the [ECP DC discovery algorithm](https://github.com/EduardoPena/fdcd/tree/main) to obtain the size of the evidence set.
 
 Simply add the following in line 69 on FDCDMocker.java [https://github.com/EduardoPena/fdcd/tree/main](https://github.com/EduardoPena/fdcd/blob/main/src/main/java/br/edu/utfpr/pena/fdcd/mockers/FDCDMocker.java)
 
