@@ -1,7 +1,9 @@
 package lima;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -163,21 +165,50 @@ public final class LIMA {
     }
 
     /**
-     * Attribute relatedness matrix derived from sound edges: entry [x][y]
-     * is the strongest -z for an edge that adds y on top of a node
-     * containing x.
+     * Attribute relatedness matrix over every edge between explored nodes.
+     * Entry [x][y] is the strongest -z seen for an edge that adds y on top
+     * of a node containing x; zero means no such edge was visited.
      */
     public double[][] relatedness() {
         int npgs = predicateGroups.size();
         double[][] matrix = new double[npgs][npgs];
+        for (double[] row : matrix) {
+            Arrays.fill(row, Double.NEGATIVE_INFINITY);
+        }
 
-        for (Lattice.Edge edge : state.soundEdges()) {
-            int c = edge.pg;
-            double value = -state.minSoundZ(edge);
-            Lattice.Node parent = edge.fr();
-            for (int x : parent.preds().keySet()) {
-                if (value > matrix[x][c]) {
-                    matrix[x][c] = value;
+        Set<Lattice.Node> explored = new HashSet<>();
+        Iterator<Lattice.Node> it = state.explored();
+        while (it.hasNext()) {
+            explored.add(it.next());
+        }
+
+        for (Lattice.Node parent : explored) {
+            if (parent.preds().isEmpty()) {
+                continue;
+            }
+            for (int pg = 0; pg < lattice.npgs(); pg++) {
+                if (parent.contains(pg)) {
+                    continue;
+                }
+                for (int p = 0; p < lattice.pgs(pg); p++) {
+                    Lattice.Edge edge = parent.to(pg, p);
+                    if (!explored.contains(edge.to())) {
+                        continue;
+                    }
+                    double value = -state.minSoundZ(edge);
+                    for (int x : parent.preds().keySet()) {
+                        if (value > matrix[x][pg]) {
+                            matrix[x][pg] = value;
+                        }
+                    }
+                }
+            }
+        }
+
+        for (double[] row : matrix) {
+            for (int j = 0; j < row.length; j++) {
+                if (row[j] == Double.NEGATIVE_INFINITY) {
+                    row[j] = 0.0;
                 }
             }
         }
