@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
 import lima.data.dataset.Dataset;
@@ -23,6 +24,7 @@ import lima.scheduler.LIMAScheduler;
 import lima.scheduler.Schedule;
 import lima.scheduler.Scheduler;
 import lima.scheduler.TopUpScheduler;
+import lima.util.random.RandZ2;
 
 /** Main controller: owns the dataset, its per-attribute predicate groups,
  * and the lattice belief state over them. */
@@ -39,13 +41,23 @@ public final class LIMA {
     private final double approx; // scheduler threshold for filtering nodes (nodeGrad cutoff)
     private final double devs;   // soundness test threshold, in z-score standard deviations
     private int currentRange;    // active row range [0, currentRange) - grows via expand()
+    private final Random random; // shared source of all sampling randomness
 
     public LIMA(Dataset dataset, Scheduler scheduler, Sampler sampler, double approx, double devs, int initialRange) {
+        this(dataset, scheduler, sampler, approx, devs, initialRange, new Random());
+    }
+
+    public LIMA(Dataset dataset, Scheduler scheduler, Sampler sampler, double approx, double devs, int initialRange, long seed) {
+        this(dataset, scheduler, sampler, approx, devs, initialRange, new Random(seed));
+    }
+
+    private LIMA(Dataset dataset, Scheduler scheduler, Sampler sampler, double approx, double devs, int initialRange, Random random) {
         this.dataset = dataset;
         this.predicateGroups = PredicateGroup.buildPredicateGroups(dataset);
+        this.random = random;
 
         this.currentRange = initialRange;
-        this.domain = new TPDomain(initialRange);
+        this.domain = new TPDomain(initialRange, new RandZ2(64, random));
         int[] pgs = new int[predicateGroups.size()];
         for (int i = 0; i < pgs.length; i++) {
             pgs[i] = predicateGroups.get(i).numPredicates();
@@ -70,6 +82,10 @@ public final class LIMA {
 
     public LIMA(Dataset dataset, double approx, int initialRange) {
         this(dataset, new LIMAScheduler(), new LIMASampler(), approx, 4.0, initialRange);
+    }
+
+    public LIMA(Dataset dataset, double approx, int initialRange, long seed) {
+        this(dataset, new LIMAScheduler(), new LIMASampler(), approx, 4.0, initialRange, seed);
     }
 
     public int getStepSize(int iteration) {
@@ -105,7 +121,7 @@ public final class LIMA {
 
         this.scheduler = new TopUpScheduler(targets);
         this.sampler = new TopUpSampler(targets);
-        this.domain = new TPDifferenceDomain(currentRange, newRange);
+        this.domain = new TPDifferenceDomain(currentRange, newRange, new RandZ2(64, random));
         this.currentRange = newRange;
     }
 
