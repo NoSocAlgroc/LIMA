@@ -25,21 +25,33 @@ public interface LatticeState {
 
     BetaDist getDist(Lattice.Node n);
 
+    /** Conditional distribution of the edge's target given its source. */
+    BetaDist getEdgeDist(Lattice.Edge edge);
+
+    boolean isEdgeExplored(Lattice.Edge edge);
+
+    /** Every edge with a recorded conditional distribution. */
+    Iterable<Lattice.Edge> exploredEdges();
+
     /** Every node with a recorded distribution (i.e. sampled at least once). */
     Iterator<Lattice.Node> explored();
 
     /**
-     * Add a sampling round's results (node -> {successes, failures}) to
-     * each node's distribution, then refresh sound/candidate edges to
-     * reflect the updated distributions.
+     * Add a sampling round's node results, then refresh sound/candidate
+     * edges using node distributions (legacy path).
      */
     void update(Map<Lattice.Node, long[]> results, double threshold);
 
     /**
-     * The minimum (most negative) nodeDist4 z-score over every predicate pg
-     * in the edge's parent - how sound `edge` is at its strongest
-     * supporting comparison, on the same scale a soundness threshold
-     * compares against.
+     * Add a sampling round's node and edge results, then refresh
+     * sound/candidate edges using edge conditional distributions.
+     */
+    void update(Map<Lattice.Node, long[]> results, Map<Lattice.Edge, long[]> edgeResults, double threshold);
+
+    /**
+     * The minimum edge-interaction z-score over every predicate pg in the
+     * edge's parent: how sound `edge` is at its strongest supporting
+     * comparison.
      */
     double minSoundZ(Lattice.Edge edge);
 }

@@ -18,6 +18,7 @@ import lima.util.stats.BetaDist;
 public final class LIMALatticeState implements LatticeState {
     private final Lattice lattice;
     private final Map<Lattice.Node, BetaDist> dists = new HashMap<>();
+    private final Map<Lattice.Edge, BetaDist> edgeDists = new HashMap<>();
     private final Set<Lattice.Edge> soundEdges = new HashSet<>();
     private final Set<Lattice.Edge> candidateEdges = new HashSet<>();
 
@@ -68,6 +69,22 @@ public final class LIMALatticeState implements LatticeState {
         return dist != null ? dist : BetaDist.empty();
     }
 
+    @Override
+    public BetaDist getEdgeDist(Lattice.Edge edge) {
+        BetaDist dist = edgeDists.get(edge);
+        return dist != null ? dist : BetaDist.empty();
+    }
+
+    @Override
+    public boolean isEdgeExplored(Lattice.Edge edge) {
+        return edgeDists.containsKey(edge);
+    }
+
+    @Override
+    public Iterable<Lattice.Edge> exploredEdges() {
+        return edgeDists.keySet();
+    }
+
     public boolean isExplored(Lattice.Node n) {
         return dists.containsKey(n);
     }
@@ -82,19 +99,40 @@ public final class LIMALatticeState implements LatticeState {
         dists.computeIfAbsent(n, k -> BetaDist.empty()).add(a, b);
     }
 
+    /** Add a conditional observation (child successes, parent successes not child). */
+    public void updateEdge(Lattice.Edge edge, long a, long b) {
+        edgeDists.computeIfAbsent(edge, k -> BetaDist.empty()).add(a, b);
+    }
+
     @Override
     public void update(Map<Lattice.Node, long[]> results, double threshold) {
         for (Map.Entry<Lattice.Node, long[]> entry : results.entrySet()) {
             long[] ab = entry.getValue();
             updateNode(entry.getKey(), ab[0], ab[1]);
         }
-        updateSoundEdges(threshold);
+        updateSoundEdges(threshold, false);
     }
 
-    private void updateSoundEdges(double threshold) {
+    @Override
+    public void update(
+        Map<Lattice.Node, long[]> results, Map<Lattice.Edge, long[]> edgeResults, double threshold
+    ) {
+        for (Map.Entry<Lattice.Node, long[]> entry : results.entrySet()) {
+            long[] ab = entry.getValue();
+            updateNode(entry.getKey(), ab[0], ab[1]);
+        }
+        for (Map.Entry<Lattice.Edge, long[]> entry : edgeResults.entrySet()) {
+            long[] ab = entry.getValue();
+            updateEdge(entry.getKey(), ab[0], ab[1]);
+        }
+        updateSoundEdges(threshold, true);
+    }
+
+    private void updateSoundEdges(double threshold, boolean useEdgeStats) {
         List<Lattice.Edge> newlySound = new ArrayList<>();
         for (Lattice.Edge edge : new ArrayList<>(candidateEdges)) {
-            if (isSound(edge, threshold)) {
+            boolean sound = useEdgeStats ? isSoundByEdge(edge, threshold) : isSoundByNode(edge, threshold);
+            if (sound) {
                 candidateEdges.remove(edge);
                 soundEdges.add(edge);
                 newlySound.add(edge);
@@ -168,11 +206,8 @@ public final class LIMALatticeState implements LatticeState {
         }
     }
 
-    /**
-     * An edge is sound when every predicate comparison against its
-     * reduced-parent reference edge has z &lt; -threshold.
-     */
-    private boolean isSound(Lattice.Edge edge, double threshold) {
+    /** Legacy node-distribution soundness test. */
+    private boolean isSoundByNode(Lattice.Edge edge, double threshold) {
         Lattice.Node parent = edge.fr();
         BetaDist from1Dist = getDist(parent);
         BetaDist to1Dist = getDist(edge.to());
@@ -186,21 +221,56 @@ public final class LIMALatticeState implements LatticeState {
         return true;
     }
 
+    /**
+     * Edge-distribution soundness test: compare the conditional edge against
+     * every reduced-parent support edge. Missing edge statistics fail closed.
+     */
+    private boolean isSoundByEdge(Lattice.Edge edge, double threshold) {
+        if (!isEdgeExplored(edge)) {
+            return false;
+        }
+
+        Lattice.Node parent = edge.fr();
+        for (int pg : parent.preds().keySet()) {
+            Lattice.Edge support = parent.fr(pg).fr().to(edge.pg, edge.p);
+            if (!isEdgeExplored(support)) {
+                return false;
+            }
+            if (edgeInteractionZ(edge, support) >= -threshold) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public double minSoundZ(Lattice.Edge edge) {
-        Lattice.Node parent = edge.fr();
-        BetaDist from1Dist = getDist(parent);
-        BetaDist to1Dist = getDist(edge.to());
+        if (!isEdgeExplored(edge)) {
+            return Double.POSITIVE_INFINITY;
+        }
 
+        Lattice.Node parent = edge.fr();
         double best = Double.POSITIVE_INFINITY;
         for (int pg : parent.preds().keySet()) {
-            double z = supportZScore(edge, parent, from1Dist, to1Dist, pg);
-            best = Math.min(best, z);
+            Lattice.Edge support = parent.fr(pg).fr().to(edge.pg, edge.p);
+            if (!isEdgeExplored(support)) {
+                return Double.POSITIVE_INFINITY;
+            }
+            best = Math.min(best, edgeInteractionZ(edge, support));
         }
         return best;
     }
 
-    /** Shared by isSound (short-circuits) and minSoundZ (needs every score). */
+    /** Difference in conditional log-odds: negative means the edge is more selective. */
+    private double edgeInteractionZ(Lattice.Edge edge, Lattice.Edge support) {
+        BetaDist e = getEdgeDist(edge);
+        BetaDist s = getEdgeDist(support);
+        double m = e.meanLogOdds - s.meanLogOdds;
+        double v = e.varLogOdds + s.varLogOdds;
+        return m / Math.sqrt(v);
+    }
+
+    /** Legacy node-based comparison, retained for the node-only update path. */
     private double supportZScore(
         Lattice.Edge edge, Lattice.Node parent, BetaDist from1Dist, BetaDist to1Dist, int pg
     ) {

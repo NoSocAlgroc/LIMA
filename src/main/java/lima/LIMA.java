@@ -2,8 +2,8 @@ package lima;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -18,6 +18,7 @@ import lima.data.predicate.PredicateGroup;
 import lima.lattice.Lattice;
 import lima.lattice.LatticeState;
 import lima.lattice.LIMALatticeState;
+import lima.lattice.PredicateRef;
 import lima.sampler.LIMASampler;
 import lima.sampler.Sample;
 import lima.sampler.Sampler;
@@ -104,7 +105,34 @@ public final class LIMA {
 
         int n = getStepSize(iteration);
         Sample result = sampler.sample(sched, domain, predicateGroups, state, n);
-        state.update(result.counts, devs);
+
+        Map<Lattice.Edge, long[]> edgeResults = new HashMap<>();
+        for (Map.Entry<Lattice.Node, Set<PredicateRef>> entry : sched.children.entrySet()) {
+            Lattice.Node parent = entry.getKey();
+            long[] parentCounts = result.counts.get(parent);
+            if (parentCounts == null) {
+                continue;
+            }
+            long parentA = parentCounts[0];
+            if (parentA == 0) {
+                continue;
+            }
+
+            for (PredicateRef ref : entry.getValue()) {
+                Lattice.Edge edge = parent.to(ref.pg(), ref.p());
+                long[] childCounts = result.counts.get(edge.to());
+                if (childCounts == null) {
+                    continue;
+                }
+                long childA = childCounts[0];
+                if (childA > parentA) {
+                    continue; // scaled top-up counts can break nesting
+                }
+                edgeResults.put(edge, new long[] {childA, parentA - childA});
+            }
+        }
+
+        state.update(result.counts, edgeResults, devs);
         return false;
     }
 
@@ -165,9 +193,9 @@ public final class LIMA {
     }
 
     /**
-     * Attribute relatedness matrix over every edge between explored nodes.
-     * Entry [x][y] is the strongest -z seen for an edge that adds y on top
-     * of a node containing x; zero means no such edge was visited.
+     * Attribute relatedness matrix over every sampled edge. Entry [x][y] is
+     * the strongest -z seen for an edge that adds y on top of a node
+     * containing x; zero means no such edge was visited.
      */
     public double[][] relatedness() {
         int npgs = predicateGroups.size();
@@ -176,31 +204,17 @@ public final class LIMA {
             Arrays.fill(row, Double.NEGATIVE_INFINITY);
         }
 
-        Set<Lattice.Node> explored = new HashSet<>();
-        Iterator<Lattice.Node> it = state.explored();
-        while (it.hasNext()) {
-            explored.add(it.next());
-        }
-
-        for (Lattice.Node parent : explored) {
-            if (parent.preds().isEmpty()) {
+        for (Lattice.Edge edge : state.exploredEdges()) {
+            Lattice.Node parent = edge.fr();
+            double z = state.minSoundZ(edge);
+            if (!Double.isFinite(z)) {
                 continue;
             }
-            for (int pg = 0; pg < lattice.npgs(); pg++) {
-                if (parent.contains(pg)) {
-                    continue;
-                }
-                for (int p = 0; p < lattice.pgs(pg); p++) {
-                    Lattice.Edge edge = parent.to(pg, p);
-                    if (!explored.contains(edge.to())) {
-                        continue;
-                    }
-                    double value = -state.minSoundZ(edge);
-                    for (int x : parent.preds().keySet()) {
-                        if (value > matrix[x][pg]) {
-                            matrix[x][pg] = value;
-                        }
-                    }
+
+            double value = -z;
+            for (int x : parent.preds().keySet()) {
+                if (value > matrix[x][edge.pg]) {
+                    matrix[x][edge.pg] = value;
                 }
             }
         }
