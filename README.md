@@ -23,14 +23,13 @@ After the process finishes, the executable is found in the ```target``` director
 
 The algorithm may be executed from console with the following command:
 
-```java -jar LIMA.jar DATASET APPROX ROWS SEED```
+```java -jar LIMA.jar DATASET APPROX ROWS```
 
 Where each parameter is:
 
 * DATASET: path to the dataset.
 * APPROX: approximation factor in [0,1).
-* ROWS: Number of rows of the dataset to be used.
-* SEED: A seed may be used to make all random sampling deterministic, to ease reproducibility.
+* ROWS: Number of rows of the dataset to be used. For dynamic evaluation, append tuple sizes as: 100000;1000;25000, and DCs will be discovered on the original slice of tuples and expanded by adding each new amount of tuples, maintainting its significance over the expanded datasets.
 
 ## Reproducibility
 
