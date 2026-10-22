@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import lima.LIMA;
 import lima.util.stats.BetaDist;
 
 /**
@@ -138,8 +139,16 @@ public final class LIMALatticeState implements LatticeState {
                 newlySound.add(edge);
             }
         }
-        for (Lattice.Edge edge : newlySound) {
-            propagateSound(edge);
+        if (LIMA.ar) {
+            for (Lattice.Edge edge : newlySound) {
+                propagateSound(edge);
+            }
+        } else {
+            // Re-check every sound edge: a candidate may have been rejected
+            // earlier because a support edge had not been explored yet.
+            for (Lattice.Edge edge : new ArrayList<>(soundEdges)) {
+                propagateSound(edge);
+            }
         }
     }
 
@@ -270,7 +279,6 @@ public final class LIMALatticeState implements LatticeState {
         return m / Math.sqrt(v);
     }
 
-    /** Legacy node-based comparison, retained for the node-only update path. */
     private double supportZScore(
         Lattice.Edge edge, Lattice.Node parent, BetaDist from1Dist, BetaDist to1Dist, int pg
     ) {
@@ -281,15 +289,47 @@ public final class LIMALatticeState implements LatticeState {
         return BetaDist.nodeDist4(from1Dist, to1Dist, from2Dist, to2Dist);
     }
 
-    /** Edge parent->child is a candidate if every parallel support edge is sound.
-     *
-     * For each predicate in parent, remove it and check that the
-     * same-predicate edge from that reduced parent is in soundEdges. */
     private boolean isCandidate(Lattice.Edge edge) {
+        if (LIMA.ar) {
+            return allSupportsSound(edge);
+        }
+        Lattice.Node parent = edge.fr();
+        boolean hasSoundSupport = false;
+        for (int pg : parent.preds().keySet()) {
+            Lattice.Edge supportEdge = parent.fr(pg).fr().to(edge.pg, edge.p);
+            if (soundEdges.contains(supportEdge)) {
+                hasSoundSupport = true;
+            } else if (!isSelective(supportEdge, -0.5)) {
+                return false;
+            }
+        }
+        return hasSoundSupport;
+    }
+
+    /** Matrix mode: every parallel support edge must already be sound. */
+    private boolean allSupportsSound(Lattice.Edge edge) {
         Lattice.Node parent = edge.fr();
         for (int pg : parent.preds().keySet()) {
             Lattice.Edge supportEdge = parent.fr(pg).fr().to(edge.pg, edge.p);
             if (!soundEdges.contains(supportEdge)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+    private boolean isSelective(Lattice.Edge edge, double threshold) {
+        if (!isEdgeExplored(edge)) {
+            return false;
+        }
+        Lattice.Node parent = edge.fr();
+        for (int pg : parent.preds().keySet()) {
+            Lattice.Edge support = parent.fr(pg).fr().to(edge.pg, edge.p);
+            if (!isEdgeExplored(support)) {
+                return false;
+            }
+            if (edgeInteractionZ(edge, support) >= threshold) {
                 return false;
             }
         }
@@ -307,7 +347,7 @@ public final class LIMALatticeState implements LatticeState {
             for (int p2 = 0; p2 < lattice.pgs(pg2); p2++) {
                 Lattice.Node superset = parent.to(pg2, p2).to();
                 Lattice.Edge candidateEdge = superset.to(edge.pg, edge.p);
-                if (isCandidate(candidateEdge)) {
+                if (!soundEdges.contains(candidateEdge) && isCandidate(candidateEdge)) {
                     candidateEdges.add(candidateEdge);
                 }
             }

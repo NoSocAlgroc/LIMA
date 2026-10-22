@@ -2,6 +2,7 @@ package lima;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,10 +29,14 @@ import lima.scheduler.Schedule;
 import lima.scheduler.Scheduler;
 import lima.scheduler.TopUpScheduler;
 import lima.util.random.RandZ2;
+import lima.util.stats.BetaDist;
 
 /** Main controller: owns the dataset, its per-attribute predicate groups,
  * and the lattice belief state over them. */
 public final class LIMA {
+    /** Global mode: false = discover/print DCs, true = build/print the attribute relatedness matrix. */
+    public static boolean ar = false;
+
     private static final String[] PRED_OPS = {"=", "!=", "<", ">"}; // predicate id -> operator symbol, shared by Unordered/OrderedPG
 
     private final Dataset dataset;
@@ -190,6 +195,50 @@ public final class LIMA {
             result.add(nodeText(n));
         }
         return result;
+    }
+
+    /** Render the Beta(a,b) of every explored lattice node and edge. */
+    public String latticeStateText() {
+        List<Lattice.Node> explored = new ArrayList<>();
+        state.explored().forEachRemaining(explored::add);
+        explored.sort(Comparator.comparingInt(Lattice.Node::size).thenComparing(this::nodeLabel));
+
+        StringBuilder sb = new StringBuilder("NODES\n");
+        for (Lattice.Node node : explored) {
+            BetaDist d = state.getDist(node);
+            sb.append(nodeLabel(node))
+              .append(" a=").append(d.a)
+              .append(" b=").append(d.b)
+              .append('\n');
+        }
+
+        List<Lattice.Edge> edges = new ArrayList<>();
+        state.exploredEdges().forEach(edges::add);
+        edges.sort(Comparator
+            .comparing((Lattice.Edge e) -> nodeLabel(e.fr()))
+            .thenComparingInt(e -> e.pg)
+            .thenComparingInt(e -> e.p));
+
+        sb.append("\nEDGES\n");
+        for (Lattice.Edge edge : edges) {
+            BetaDist d = state.getEdgeDist(edge);
+            sb.append(nodeLabel(edge.fr()))
+              .append(" --(+").append(predicateText(edge.pg, edge.p)).append(")--> ")
+              .append(nodeLabel(edge.to()))
+              .append(" a=").append(d.a)
+              .append(" b=").append(d.b)
+              .append('\n');
+        }
+        return sb.toString();
+    }
+
+    private String nodeLabel(Lattice.Node node) {
+        return node.preds().isEmpty() ? "root" : nodeText(node);
+    }
+
+    private String predicateText(int pg, int p) {
+        String column = dataset.getColumns().get(pg);
+        return column + PRED_OPS[p] + column;
     }
 
     /**

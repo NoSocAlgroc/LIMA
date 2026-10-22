@@ -2,6 +2,7 @@ package lima;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.List;
 import java.util.Random;
 
 import lima.data.dataset.Dataset;
@@ -15,10 +16,13 @@ import lima.data.dataset.Dataset;
  * printed.
  */
 public final class Main {
-    private static final int MAX_ITERATIONS = 100; // per-stage safety bound, not expected to be hit in practice
+    private static final int MAX_ITERATIONS = 100; // per-stage safety bound, might be worth increasing max sample size instead of this if it is ever hit
     private static final String OUTPUT_PATH = "output.txt";
 
     public static void main(String[] args) throws IOException {
+
+
+        //args= new String[]{"data/tax500k.csv", "0.0000001", "100000", "42"};
         if (args.length < 3 || args.length > 4) {
             System.err.println("Usage: java -jar LIMA.jar <dataset.csv> <approx> <rows> [seed]");
             System.err.println("  <rows> is a comma-separated list, e.g. 1000 or 1000,500,500");
@@ -30,7 +34,7 @@ public final class Main {
         double approx = Double.parseDouble(args[1]);
         int[] rowCounts = parseRowCounts(args[2]);
         long seed = args.length == 4 ? Long.parseLong(args[3]) : new Random().nextLong();
-        System.out.println("Seed: " + seed);
+        //System.out.println("Seed: " + seed);
 
         int totalRows = 0;
         for (int rows : rowCounts) {
@@ -40,19 +44,23 @@ public final class Main {
 
         LIMA lima = new LIMA(dataset, approx, rowCounts[0], seed);
         int cumulativeRange = rowCounts[0];
-        System.out.println("Stage 1: saturating on [0, " + cumulativeRange + ") by distribution variance...");
+        //System.out.println("Stage 1: saturating on [0, " + cumulativeRange + ") by distribution variance...");
         runToConvergence(lima, "stage 1");
 
         for (int stage = 1; stage < rowCounts.length; stage++) {
             lima.expand(rowCounts[stage]);
             cumulativeRange += rowCounts[stage];
-            System.out.println(
-                "Stage " + (stage + 1) + ": expanding to [0, " + cumulativeRange + ") and topping up by sample count...");
+            //System.out.println(
+            //    "Stage " + (stage + 1) + ": expanding to [0, " + cumulativeRange + ") and topping up by sample count...");
             runToConvergence(lima, "stage " + (stage + 1));
         }
 
-        writeMatrix(lima.relatedness(), OUTPUT_PATH);
-        System.out.println("Wrote " + OUTPUT_PATH);
+        if (LIMA.ar) {
+            writeMatrix(lima.relatedness(), OUTPUT_PATH);
+        } else {
+            writeDCs(lima.deadEndsText(), OUTPUT_PATH);
+        }
+        //System.out.println("Wrote " + OUTPUT_PATH);
     }
 
     private static int[] parseRowCounts(String arg) {
@@ -70,11 +78,19 @@ public final class Main {
     private static void runToConvergence(LIMA lima, String stageLabel) {
         for (int i = 0; i < MAX_ITERATIONS; i++) {
             if (lima.step(i)) {
-                System.out.println("  " + stageLabel + " converged after " + (i + 1) + " iteration(s)");
+                //System.out.println("  " + stageLabel + " converged after " + (i + 1) + " iteration(s)");
                 return;
             }
         }
-        System.err.println("  warning: " + stageLabel + " did not converge within " + MAX_ITERATIONS + " iterations");
+        //System.err.println("  warning: " + stageLabel + " did not converge within " + MAX_ITERATIONS + " iterations");
+    }
+
+    private static void writeDCs(List<String> dcs, String path) throws IOException {
+        try (PrintWriter writer = new PrintWriter(path, "UTF-8")) {
+            for (String dc : dcs) {
+                writer.println(dc);
+            }
+        }
     }
 
     private static void writeMatrix(double[][] matrix, String path) throws IOException {
